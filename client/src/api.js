@@ -78,3 +78,34 @@ export function formatDate(dateStr) {
     year: 'numeric',
   });
 }
+
+export function groupByDate(files) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const groups = {};
+
+  for (const file of files) {
+    const fileDate = new Date(file.createdAt);
+    const fileDay = new Date(fileDate.getFullYear(), fileDate.getMonth(), fileDate.getDate());
+
+    let label;
+    if (fileDay.getTime() === today.getTime()) {
+      label = 'Hoy';
+    } else if (fileDay.getTime() === yesterday.getTime()) {
+      label = 'Ayer';
+    } else if (fileDay.getTime() > today.getTime() - 7 * 86400000) {
+      label = fileDay.toLocaleDateString('es-ES', { weekday: 'long' });
+      label = label.charAt(0).toUpperCase() + label.slice(1);
+    } else {
+      label = fileDay.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(file);
+  }
+
+  return Object.entries(groups);
+}

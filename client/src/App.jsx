@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchFiles, fetchStats, uploadFiles, deleteFile, formatBytes, formatDate } from './api';
+import { fetchFiles, fetchStats, uploadFiles, deleteFile, formatBytes, formatDate, groupByDate } from './api';
 
 function App() {
   const [files, setFiles] = useState([]);
@@ -190,21 +190,31 @@ function App() {
           </p>
         </div>
       ) : (
-        <div className="gallery">
-          {files.map((file, idx) => (
-            <div key={file.id} className="gallery-item" onClick={() => setLightboxIndex(idx)}>
-              {file.type === 'image' ? (
-                <img src={file.url} alt={file.originalName} loading="lazy" />
-              ) : (
-                <video src={file.url} preload="metadata" muted />
-              )}
-              <span className="badge">{file.type === 'image' ? '📸' : '🎥'}</span>
-              <button className="delete-btn" onClick={(e) => handleDelete(e, file.id)} title="Eliminar">
-                ✕
-              </button>
-              <div className="info">
-                <div className="name">{file.originalName}</div>
-                <div className="date">{formatDate(file.createdAt)}</div>
+        <div className="gallery-sections">
+          {groupByDate(files).map(([dateLabel, groupFiles]) => (
+            <div key={dateLabel} className="date-group">
+              <h2 className="date-label">{dateLabel}</h2>
+              <div className="gallery">
+                {groupFiles.map((file) => {
+                  const globalIdx = files.findIndex(f => f.id === file.id);
+                  return (
+                    <div key={file.id} className="gallery-item" onClick={() => setLightboxIndex(globalIdx)}>
+                      {file.type === 'image' ? (
+                        <img src={file.url} alt={file.originalName} loading="lazy" />
+                      ) : (
+                        <video src={file.url} preload="metadata" muted />
+                      )}
+                      <span className="badge">{file.type === 'image' ? '📸' : '🎥'}</span>
+                      <button className="delete-btn" onClick={(e) => handleDelete(e, file.id)} title="Eliminar">
+                        ✕
+                      </button>
+                      <div className="info">
+                        <div className="name">{file.originalName}</div>
+                        <div className="date">{formatDate(file.createdAt)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
