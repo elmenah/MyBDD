@@ -20,9 +20,35 @@ app.use(express.json());
 // Inicializar DB y arrancar servidor
 const db = initDB();
 
-// Rutas API
-app.use('/api', uploadRoutes(db));
-app.use('/api', filesRoutes(db));
+// Auth simple
+const APP_PASSWORD = process.env.APP_PASSWORD || '';
+
+app.post('/api/auth/login', (req, res) => {
+  const { password } = req.body;
+  if (!APP_PASSWORD) return res.json({ success: true, token: 'open' });
+  if (password === APP_PASSWORD) {
+    const token = Buffer.from(`${Date.now()}:${APP_PASSWORD}`).toString('base64');
+    return res.json({ success: true, token });
+  }
+  res.status(401).json({ error: 'Contraseña incorrecta' });
+});
+
+function authMiddleware(req, res, next) {
+  if (!APP_PASSWORD) return next();
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+  try {
+    const decoded = Buffer.from(auth.slice(7), 'base64').toString();
+    if (decoded.endsWith(`:${APP_PASSWORD}`)) return next();
+  } catch {}
+  res.status(401).json({ error: 'No autorizado' });
+}
+
+// Rutas API (protegidas)
+app.use('/api', authMiddleware, uploadRoutes(db));
+app.use('/api', authMiddleware, filesRoutes(db));
 
 // Servir frontend en producción
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
