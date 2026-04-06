@@ -1,4 +1,8 @@
 const { Pool } = require('pg');
+const dns = require('dns');
+
+// Forzar IPv4 (Render no soporta IPv6 hacia Supabase)
+dns.setDefaultResultOrder('ipv4first');
 
 let pool;
 
@@ -6,7 +10,7 @@ function getPool() {
   if (!pool) {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl: { rejectUnauthorized: false },
     });
   }
   return pool;
