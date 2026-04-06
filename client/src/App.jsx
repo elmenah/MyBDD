@@ -4,6 +4,7 @@ import {
   toggleFavorite, login, logout, isLoggedIn,
   formatBytes, formatDate, groupByDate,
 } from './api';
+import { compressFiles } from './compress';
 
 function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
@@ -59,6 +60,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [compressStatus, setCompressStatus] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState(-1);
   const [toasts, setToasts] = useState([]);
   const [dragOver, setDragOver] = useState(false);
@@ -111,15 +113,20 @@ function App() {
     const filesArray = Array.from(fileList);
     setUploading(true);
     setUploadProgress(0);
+    setCompressStatus('');
     try {
-      await uploadFiles(filesArray, setUploadProgress);
+      // Comprimir antes de subir
+      const compressed = await compressFiles(filesArray, setCompressStatus);
+      setCompressStatus('Subiendo...');
+      await uploadFiles(compressed, setUploadProgress);
       toast(`${filesArray.length} archivo(s) subido(s)`);
       await loadData();
     } catch (err) {
-      if (!handleAuthError(err)) toast('Error al subir archivos', 'error');
+      if (!handleAuthError(err)) toast(err.message || 'Error al subir archivos', 'error');
     } finally {
       setUploading(false);
       setUploadProgress(0);
+      setCompressStatus('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -282,7 +289,7 @@ function App() {
       {/* Upload Progress */}
       {uploading && (
         <div className="upload-progress">
-          <div>Subiendo... {uploadProgress}%</div>
+          <div>{compressStatus || `Subiendo... ${uploadProgress}%`}</div>
           <div className="progress-bar-container">
             <div className="progress-bar" style={{ width: `${uploadProgress}%` }}></div>
           </div>
