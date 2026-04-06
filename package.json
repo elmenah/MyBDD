@@ -1,0 +1,25 @@
+{
+  "name": "mybdd",
+  "version": "1.0.0",
+  "description": "Galería personal - sube fotos y videos desde el celular, visualiza desde el PC",
+  "main": "server/app.js",
+  "scripts": {
+    "start": "node server/app.js",
+    "build": "cd client && npm install && npx vite build",
+    "dev": "concurrently \"node server/app.js\" \"cd client && npx vite\"",
+    "client:build": "cd client && npx vite build",
+    "client:dev": "cd client && npx vite"
+  },
+  "dependencies": {
+    "cloudinary": "^2.5.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.13.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

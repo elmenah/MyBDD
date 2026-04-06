@@ -1,0 +1,6 @@
+# MyBDD
+node_modules/
+server/uploads/
+server/data.db
+client/dist/
+.env
