@@ -18,29 +18,27 @@ app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // Inicializar DB y arrancar servidor
-(async () => {
-  const db = await initDB();
+const db = initDB();
 
-  // Rutas API
-  app.use('/api', uploadRoutes(db));
-  app.use('/api', filesRoutes(db));
+// Rutas API
+app.use('/api', uploadRoutes(db));
+app.use('/api', filesRoutes(db));
 
-  // Servir frontend en producción
-  const clientDist = path.join(__dirname, '..', 'client', 'dist');
-  if (fs.existsSync(clientDist)) {
-    app.use(express.static(clientDist));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(clientDist, 'index.html'));
-    });
-  }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log('');
-    console.log('===========================================');
-    console.log('  🗂️  MyBDD - Galería Personal');
-    console.log('===========================================');
-    console.log(`  🌐  http://localhost:${PORT}`);
-    console.log('===========================================');
-    console.log('');
+// Servir frontend en producción
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
   });
-})();
+}
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('');
+  console.log('===========================================');
+  console.log('  🗂️  MyBDD - Galería Personal');
+  console.log('===========================================');
+  console.log(`  🌐  http://localhost:${PORT}`);
+  console.log('===========================================');
+  console.log('');
+});

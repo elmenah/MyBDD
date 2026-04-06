@@ -64,11 +64,18 @@ module.exports = function (db) {
         public_id: id,
       });
 
-      await db.query(
-        `INSERT INTO files (id, filename, original_name, type, mimetype, size, url, public_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [id, result.public_id, file.originalname, type, file.mimetype, file.size, result.secure_url, result.public_id]
-      );
+      const { error } = await db.from('files').insert({
+        id,
+        filename: result.public_id,
+        original_name: file.originalname,
+        type,
+        mimetype: file.mimetype,
+        size: file.size,
+        url: result.secure_url,
+        public_id: result.public_id,
+      });
+
+      if (error) throw error;
 
       res.json({
         success: true,
@@ -101,11 +108,18 @@ module.exports = function (db) {
           public_id: id,
         });
 
-        await db.query(
-          `INSERT INTO files (id, filename, original_name, type, mimetype, size, url, public_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [id, cloudResult.public_id, file.originalname, type, file.mimetype, file.size, cloudResult.secure_url, cloudResult.public_id]
-        );
+        const { error } = await db.from('files').insert({
+          id,
+          filename: cloudResult.public_id,
+          original_name: file.originalname,
+          type,
+          mimetype: file.mimetype,
+          size: file.size,
+          url: cloudResult.secure_url,
+          public_id: cloudResult.public_id,
+        });
+
+        if (error) throw error;
 
         results.push({ id, originalName: file.originalname, type, url: cloudResult.secure_url });
       }
