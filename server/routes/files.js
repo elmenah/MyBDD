@@ -1,5 +1,6 @@
 const express = require('express');
-const cloudinary = require('cloudinary').v2;
+
+const BUCKET = 'media';
 
 module.exports = function (db) {
   const router = express.Router();
@@ -25,7 +26,6 @@ module.exports = function (db) {
       const { data: files, count, error } = await query;
       if (error) throw error;
 
-      // Mapear nombres de columnas para el frontend
       const mapped = (files || []).map(f => ({
         id: f.id,
         filename: f.filename,
@@ -82,17 +82,13 @@ module.exports = function (db) {
         return res.status(404).json({ error: 'Archivo no encontrado' });
       }
 
-      // Eliminar de Cloudinary
+      // Eliminar de Supabase Storage
       if (data.public_id) {
-        const resourceType = data.type === 'image' ? 'image' : 'video';
-        try {
-          await cloudinary.uploader.destroy(data.public_id, { resource_type: resourceType });
-        } catch (cloudErr) {
-          console.error('Error al eliminar de Cloudinary:', cloudErr);
-        }
+        const { error: storageErr } = await db.storage.from(BUCKET).remove([data.public_id]);
+        if (storageErr) console.error('Error al eliminar de Storage:', storageErr);
       }
 
-      // Eliminar de Supabase
+      // Eliminar de la tabla
       const { error: delErr } = await db.from('files').delete().eq('id', id);
       if (delErr) throw delErr;
 

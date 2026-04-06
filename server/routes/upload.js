@@ -1,15 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
-const cloudinary = require('cloudinary').v2;
-const { Readable } = require('stream');
-
-// Configurar Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+const path = require('path');
 
 // Tipos MIME permitidos
 const ALLOWED_TYPES = new Set([
@@ -17,8 +9,8 @@ const ALLOWED_TYPES = new Set([
   'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm', 'video/x-matroska',
 ]);
 
-// Límite de tamaño: 100MB (Cloudinary free tier)
-const MAX_SIZE = 100 * 1024 * 1024;
+// Límite de tamaño: 50MB (Supabase Storage free tier)
+const MAX_SIZE = 50 * 1024 * 1024;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -32,16 +24,7 @@ const upload = multer({
   limits: { fileSize: MAX_SIZE },
 });
 
-// Subir buffer a Cloudinary
-function uploadToCloudinary(buffer, options) {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
-      if (error) return reject(error);
-      resolve(result);
-    });
-    Readable.from(buffer).pipe(stream);
-  });
-}
+const BUCKET = 'media';
 
 module.exports = function (db) {
   const router = express.Router();
@@ -56,30 +39,40 @@ module.exports = function (db) {
 
       const id = uuidv4();
       const type = file.mimetype.startsWith('image') ? 'image' : 'video';
-      const resourceType = type === 'image' ? 'image' : 'video';
+      const ext = path.extname(file.originalname);
+      const storagePath = `${type}s/${id}${ext}`;
 
-      const result = await uploadToCloudinary(file.buffer, {
-        folder: `mybdd/${type}s`,
-        resource_type: resourceType,
-        public_id: id,
-      });
+      // Subir a Supabase Storage
+      const { error: uploadErr } = await db.storage
+        .from(BUCKET)
+        .upload(storagePath, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false,
+        });
 
-      const { error } = await db.from('files').insert({
+      if (uploadErr) throw uploadErr;
+
+      // Obtener URL pública
+      const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(storagePath);
+      const url = urlData.publicUrl;
+
+      // Guardar en DB
+      const { error: dbErr } = await db.from('files').insert({
         id,
-        filename: result.public_id,
+        filename: storagePath,
         original_name: file.originalname,
         type,
         mimetype: file.mimetype,
         size: file.size,
-        url: result.secure_url,
-        public_id: result.public_id,
+        url,
+        public_id: storagePath,
       });
 
-      if (error) throw error;
+      if (dbErr) throw dbErr;
 
       res.json({
         success: true,
-        file: { id, originalName: file.originalname, type, url: result.secure_url },
+        file: { id, originalName: file.originalname, type, url },
       });
     } catch (err) {
       console.error('Error al subir archivo:', err);
@@ -100,28 +93,35 @@ module.exports = function (db) {
       for (const file of files) {
         const id = uuidv4();
         const type = file.mimetype.startsWith('image') ? 'image' : 'video';
-        const resourceType = type === 'image' ? 'image' : 'video';
+        const ext = path.extname(file.originalname);
+        const storagePath = `${type}s/${id}${ext}`;
 
-        const cloudResult = await uploadToCloudinary(file.buffer, {
-          folder: `mybdd/${type}s`,
-          resource_type: resourceType,
-          public_id: id,
-        });
+        const { error: uploadErr } = await db.storage
+          .from(BUCKET)
+          .upload(storagePath, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
 
-        const { error } = await db.from('files').insert({
+        if (uploadErr) throw uploadErr;
+
+        const { data: urlData } = db.storage.from(BUCKET).getPublicUrl(storagePath);
+        const url = urlData.publicUrl;
+
+        const { error: dbErr } = await db.from('files').insert({
           id,
-          filename: cloudResult.public_id,
+          filename: storagePath,
           original_name: file.originalname,
           type,
           mimetype: file.mimetype,
           size: file.size,
-          url: cloudResult.secure_url,
-          public_id: cloudResult.public_id,
+          url,
+          public_id: storagePath,
         });
 
-        if (error) throw error;
+        if (dbErr) throw dbErr;
 
-        results.push({ id, originalName: file.originalname, type, url: cloudResult.secure_url });
+        results.push({ id, originalName: file.originalname, type, url });
       }
 
       res.json({ success: true, files: results, count: results.length });
@@ -135,7 +135,7 @@ module.exports = function (db) {
   router.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(413).json({ error: 'El archivo excede el límite de 100MB' });
+        return res.status(413).json({ error: 'El archivo excede el límite de 50MB' });
       }
       return res.status(400).json({ error: err.message });
     }
