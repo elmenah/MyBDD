@@ -13,6 +13,10 @@ function getPool() {
 }
 
 async function initDB() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL no está configurada. Agrega la variable de entorno en Render.');
+  }
+
   const db = getPool();
 
   await db.query(`
